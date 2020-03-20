@@ -3,6 +3,8 @@
 require('debug').enable('*,-socket*,-engine*')
 
 const PORT = 2020
+const MAX = 50
+
 const nodeStatic = require('node-static')
 const http = require('http')
 const file = new (nodeStatic.Server)()
@@ -29,6 +31,18 @@ io.sockets.on('connection', (socket) => {
     socket.emit('log', array)
   }
 
+  function socketByID(id) {
+    return io.sockets.connected[id]
+  }
+
+  function socketIDsInRoom(room) {
+    let sockets = io.sockets.adapter.rooms[room]
+    if (sockets) {
+      return sockets.map(s => s.id)
+    }
+    return []
+  }
+
   log('Connection')
 
   socket.on('message', (message) => {
@@ -37,13 +51,10 @@ io.sockets.on('connection', (socket) => {
     socket.broadcast.emit('message', message)
   })
 
-  socket.on('create or join', (room) => {
-    logLocal('sock')
+  // socket.on('signal')
 
-    let socketRoom = io.sockets.adapter.rooms[room];
-    // let socketRoom = io.sockets.clients(room)
-    logLocal('sockriin', socketRoom)
-    const numClients = socketRoom ? socketRoom.length : 0
+  socket.on('create or join', (room) => {
+    const numClients = socketIDsInRoom(room).length
 
     log('Room ' + room + ' has ' + numClients + ' client(s)')
     log('Request to create or join room ' + room)
@@ -51,17 +62,35 @@ io.sockets.on('connection', (socket) => {
     if (numClients === 0) {
       socket.join(room)
       socket.emit('created', room)
-    } else if (numClients === 1) {
+    } else if (numClients >= 1 && numClients < MAX) {
       io.sockets.in(room).emit('join', room)
       socket.join(room)
       socket.emit('joined', room)
-    } else { // max two clients
+    } else { // max MAX clients
       socket.emit('full', room)
     }
-    socket.emit('emit(): client ' + socket.id +
-      ' joined room ' + room)
-    socket.broadcast.emit('broadcast(): client ' + socket.id +
-      ' joined room ' + room)
+
+    // socket.emit('emit(): client ' + socket.id + ' joined room ' + room)
+    // socket.broadcast.emit('broadcast(): client ' + socket.id + ' joined room ' + room)
+  })
+
+  // Establish a direct conntection between two peers
+  socket.on('signal', data => {
+    log('signal', data.from, data.to)
+    if (data.from !== id) {
+      log('*** error, wrong from', data.from)
+    }
+    if (data.to) {
+      const toSocket = socketByID(data.to)
+      if (toSocket) {
+        toSocket.emit('signal', {
+          ...data,
+          // from: socket.id,
+        })
+      } else {
+        log('Cannot find socket for %s', data.to)
+      }
+    }
   })
 
 })
