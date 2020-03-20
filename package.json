@@ -16,5 +16,9 @@
   "bugs": {
     "url": "https://github.com/holtwick/peer2school-server/issues"
   },
-  "homepage": "https://github.com/holtwick/peer2school-server#readme"
+  "homepage": "https://github.com/holtwick/peer2school-server#readme",
+  "dependencies": {
+    "node-static": "^0.7.11",
+    "socket.io": "^2.3.0"
+  }
 }
