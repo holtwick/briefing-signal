@@ -1,5 +1,7 @@
 // Inspired by https://www.html5rocks.com/en/tutorials/webrtc/infrastructure/
 
+require('debug').enable('*,-socket*,-engine*')
+
 const PORT = 2020
 const nodeStatic = require('node-static')
 const http = require('http')
@@ -9,18 +11,25 @@ const app = http.createServer(function (req, res) {
   file.serve(req, res)
 }).listen(PORT)
 
+const logLocal = require('debug')('app:server')
+
 const io = require('socket.io').listen(app)
+
+logLocal('Start on port', PORT)
 
 io.sockets.on('connection', (socket) => {
 
   // convenience function to log server messages to the client
   function log() {
     const array = ['>>> Message from server: ']
-    for (const i = 0; i < arguments.length; i++) {
-      array.push(arguments[i])
+    for (let i = 0; i < arguments.length; i++) {
+      array.push(arguments[i].toString())
     }
+    logLocal(array.join(' '))
     socket.emit('log', array)
   }
+
+  log('Connection')
 
   socket.on('message', (message) => {
     log('Got message:', message)
@@ -29,7 +38,12 @@ io.sockets.on('connection', (socket) => {
   })
 
   socket.on('create or join', (room) => {
-    const numClients = io.sockets.clients(room).length
+    logLocal('sock')
+
+    let socketRoom = io.sockets.adapter.rooms[room];
+    // let socketRoom = io.sockets.clients(room)
+    logLocal('sockriin', socketRoom)
+    const numClients = socketRoom ? socketRoom.length : 0
 
     log('Room ' + room + ' has ' + numClients + ' client(s)')
     log('Request to create or join room ' + room)
@@ -48,7 +62,6 @@ io.sockets.on('connection', (socket) => {
       ' joined room ' + room)
     socket.broadcast.emit('broadcast(): client ' + socket.id +
       ' joined room ' + room)
-
   })
 
 })
