@@ -1,11 +1,15 @@
 {
-  "name": "peer2school-server",
+  "name": "peer-school-signal",
   "version": "0.1.0",
-  "description": "Signaling Server",
+  "description": "WebRTC Signaling Server for peer.school",
   "private": true,
   "main": "server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "pm2 start server.js",
+    "stop": "pm2 stop server",
+    "debug": "DEBUG=signal:* nodemon --inspect ./server.js",
+    "serve": "node ./server.js",
+    "test": "jest --detectOpenHandles *.spec.js"
   },
   "repository": {
     "type": "git",
@@ -16,5 +20,22 @@
   "bugs": {
     "url": "https://github.com/holtwick/peer2school-server/issues"
   },
-  "homepage": "https://github.com/holtwick/peer2school-server#readme"
+  "homepage": "https://github.com/holtwick/peer2school-server#readme",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "debug": "^4.1.1",
+    "express": "^4.17.1",
+    "helmet": "^3.21.3",
+    "simple-peer": "^9.6.2",
+    "socket.io": "^2.3.0"
+  },
+  "devDependencies": {
+    "cross-fetch": "^3.0.4",
+    "jest": "^25.1.0",
+    "nodemon": "^2.0.2",
+    "socket.io-client": "^2.3.0"
+  },
+  "engines": {
+    "node": ">=12"
+  }
 }
