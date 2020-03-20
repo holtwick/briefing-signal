@@ -1,13 +1,13 @@
 {
-  "name": "peer2school-server",
+  "name": "peer-school-signal",
   "version": "0.1.0",
-  "description": "Signaling Server",
+  "description": "WebRTC Signaling Server for peer.school",
   "private": true,
   "main": "server.js",
   "scripts": {
     "start": "pm2 start server.js",
     "stop": "pm2 stop server",
-    "debug": "DEBUG=app:* nodemon --inspect ./server.js",
+    "debug": "DEBUG=signal:* nodemon --inspect ./server.js",
     "serve": "node ./server.js",
     "test": "jest --detectOpenHandles *.spec.js"
   },

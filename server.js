@@ -1,86 +1,107 @@
-// Inspired by https://www.html5rocks.com/en/tutorials/webrtc/infrastructure/
-
-require('debug').enable('*,-socket*,-engine*')
-
-const PORT = 2020
-const MAX = 50
-
-const nodeStatic = require('node-static')
+const express = require('express')
+const app = express()
 const http = require('http')
-const file = new (nodeStatic.Server)()
+const server = new http.Server(app)
+const io = require('socket.io')(server)
+const helmet = require('helmet')
+const cors = require('cors')
+const {
+  rooms,
+  addSocketToRoom,
+  removeSocketFromRoom,
+  allSocketsForRoom,
+} = require('./rooms')
+const config = require('./config')
 
-const app = http.createServer(function (req, res) {
-  file.serve(req, res)
-}).listen(PORT)
+const CONFIG = {
+  title: config.title,
+  port: process.env.PORT || config.port || 4444,
+  timeout: config.timeout || 30000,
+  max: config.max || 50,
+}
 
-const logLocal = require('debug')('app:server')
+process.title = CONFIG.title
 
-const io = require('socket.io').listen(app)
+const log = require('debug')('signal:server')
 
-logLocal('Start on port', PORT)
+app.use(helmet())
+app.use(cors())
 
-io.sockets.on('connection', (socket) => {
-  logLocal('Connection', socket)
-  const socketID = socket.id
+// SOCKET.IO
 
-  // convenience function to log server messages to the client
-  function log() {
-    const array = ['>>> Message from server: ']
-    for (let i = 0; i < arguments.length; i++) {
-      array.push(arguments[i].toString())
-    }
-    logLocal(array.join(' '))
-    socket.emit('log', array)
+let brokenSockets = {}
+
+function activeSockets(id = null) {
+  return Object.keys(io.sockets.connected).filter(sid => sid !== id && !brokenSockets[sid])
+}
+
+function brokenSocket(socket) {
+  brokenSockets[socket.id] = true
+  // log('--- broken sockets', Object.keys(brokenSockets).length, 'connected', activeSockets().length)
+  io.emit('remove', { id: socket.id })
+}
+
+function socketByID(id) {
+  return io.sockets.connected[id]
+}
+
+function emitByID(id, name, msg) {
+  let socket = socketByID(id)
+  if (socket) {
+    log('emit', id, name, msg)
+    socket.emit(name, msg)
+  }
+}
+
+function broadcastByID(ids, name, msg) {
+  for (let id of ids) {
+    emitByID(id, name, msg)
+  }
+}
+
+io.on('connection', function (socket) {
+  const sid = socket.id
+  let currentRoom
+
+  let peers = activeSockets(sid)
+  log('connection', sid, 'peers', peers)
+
+  for (const msg of ['disconnect', 'disconnecting', 'error']) {
+    socket.on(msg, data => {
+      // if (msg === 'error') {
+      log(`* ${msg}:`, data)
+      // let inform = removeSocket(sid)
+      brokenSocket(socket)
+      removeSocketFromRoom(currentRoom, sid)
+      // broadcastWorkspacesByID(inform)
+    })
   }
 
-  function socketByID(id) {
-    return io.sockets.connected[id]
-  }
-
-  function socketIDsInRoom(room) {
-    let sockets = io.sockets.adapter.rooms[room]
-    logLocal('sockets in room', room, sockets)
-    if (sockets && sockets.length > 0) {
-      return Object.entries(sockets.sockets).filter((k, v) => v === true).map(k => k)
-    }
-    return []
-  }
-
-  socket.on('message', (message) => {
-    log('Got message:', message)
-    // for a real app, would be room only (not broadcast)
-    socket.broadcast.emit('message', message)
-  })
-
-  socket.on('create or join', (room) => {
-    const peers = socketIDsInRoom(room)
-    const numClients = peers.length
-
-    log('Room ' + room + ' has ' + numClients + ' client(s)')
-    log('Request to create or join room ' + room)
-
-    if (numClients === 0) {
-      socket.join(room)
-      socket.emit('created', room)
-    } else if (numClients >= 1 && numClients < MAX) {
-      io.sockets.in(room).emit('join', room)
-      socket.join(room)
+  socket.on('join', ({ room }) => {
+    let peers = allSocketsForRoom(room)
+    const full = peers.length >= config.max
+    if (full) {
+      socket.emit('error', {
+        error: `Room ${room} is full`,
+        code: 1,
+        full,
+      })
+    } else {
+      removeSocketFromRoom(sid, currentRoom)
+      addSocketToRoom(sid, room)
+      currentRoom = room
       socket.emit('joined', {
         room,
         peers,
       })
-    } else { // max MAX clients
-      socket.emit('full', room)
     }
-
-    // socket.emit('emit(): client ' + socket.id + ' joined room ' + room)
-    // socket.broadcast.emit('broadcast(): client ' + socket.id + ' joined room ' + room)
+    // broadcastByID(peers)
   })
 
-  // Establish a direct conntection between two peers
+  // Ask for a connection to another socket via ID
   socket.on('signal', data => {
     log('signal', data.from, data.to)
-    if (data.from !== socketID) {
+    if (data.from !== sid) {
       log('*** error, wrong from', data.from)
     }
     if (data.to) {
@@ -97,3 +118,47 @@ io.sockets.on('connection', (socket) => {
   })
 
 })
+
+// EXPRESS.IO
+
+const startDate = new Date()
+
+app.use('/status', (req, res) => {
+  let status = {
+    api: 1,
+    success: true,
+    info: {
+      timeStarted: Math.round(startDate.getTime()),
+      activeConnections: activeSockets().length,
+      rooms,
+    },
+  }
+  res.json(status)
+})
+
+app.use('/', (req, res) => {
+  res.send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, minimal-ui, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="format-detection" content="telephone=no">
+  <meta name="msapplication-tap-highlight" content="no">
+  <title>Peer.School Signal</title>
+</head>
+<body>
+  <p><b>Peer.School Signal</b></p>
+  <p>Running since ${startDate.toISOString()}</p>  
+</body>
+</html>`)
+})
+
+// app.use('/', express.static('public'))
+
+//
+
+server.listen(CONFIG.port)
+console.info(`Running on port ${CONFIG.port}`)
