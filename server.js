@@ -20,6 +20,8 @@ const io = require('socket.io').listen(app)
 logLocal('Start on port', PORT)
 
 io.sockets.on('connection', (socket) => {
+  logLocal('Connection', socket)
+  const socketID = socket.id
 
   // convenience function to log server messages to the client
   function log() {
@@ -37,13 +39,12 @@ io.sockets.on('connection', (socket) => {
 
   function socketIDsInRoom(room) {
     let sockets = io.sockets.adapter.rooms[room]
-    if (sockets) {
-      return sockets.map(s => s.id)
+    logLocal('sockets in room', room, sockets)
+    if (sockets && sockets.length > 0) {
+      return Object.entries(sockets.sockets).filter((k, v) => v === true).map(k => k)
     }
     return []
   }
-
-  log('Connection')
 
   socket.on('message', (message) => {
     log('Got message:', message)
@@ -51,10 +52,9 @@ io.sockets.on('connection', (socket) => {
     socket.broadcast.emit('message', message)
   })
 
-  // socket.on('signal')
-
   socket.on('create or join', (room) => {
-    const numClients = socketIDsInRoom(room).length
+    const peers = socketIDsInRoom(room)
+    const numClients = peers.length
 
     log('Room ' + room + ' has ' + numClients + ' client(s)')
     log('Request to create or join room ' + room)
@@ -65,7 +65,10 @@ io.sockets.on('connection', (socket) => {
     } else if (numClients >= 1 && numClients < MAX) {
       io.sockets.in(room).emit('join', room)
       socket.join(room)
-      socket.emit('joined', room)
+      socket.emit('joined', {
+        room,
+        peers,
+      })
     } else { // max MAX clients
       socket.emit('full', room)
     }
@@ -77,7 +80,7 @@ io.sockets.on('connection', (socket) => {
   // Establish a direct conntection between two peers
   socket.on('signal', data => {
     log('signal', data.from, data.to)
-    if (data.from !== id) {
+    if (data.from !== socketID) {
       log('*** error, wrong from', data.from)
     }
     if (data.to) {
