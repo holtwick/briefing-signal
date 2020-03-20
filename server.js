@@ -25,7 +25,7 @@ process.title = CONFIG.title
 
 const log = require('debug')('signal:server')
 
-// app.use(helmet())
+app.use(helmet())
 app.use(cors())
 
 // SOCKET.IO
