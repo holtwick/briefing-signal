@@ -70,7 +70,7 @@ io.on('connection', function (socket) {
     socket.on(msg, data => {
       log(`* ${msg}:`, data)
       brokenSocket(socket)
-      removeSocketFromRoom(currentRoom, sid)
+      removeSocketFromRoom(sid, currentRoom)
     })
   }
 
