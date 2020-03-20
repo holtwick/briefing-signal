@@ -15,6 +15,7 @@ const config = require('./config')
 
 const CONFIG = {
   title: config.title,
+  host: process.env.HOST || config.host || undefined,
   port: process.env.PORT || config.port || 4444,
   timeout: config.timeout || 30000,
   max: config.max || 50,
@@ -147,7 +148,7 @@ app.use('/', (req, res) => {
   <title>Peer.School Signal</title>
 </head>
 <body>
-  <p><b>Peer.School Signal</b></p>
+  <p><b><a href="https://peer.school">Peer.School</a> Signal</b></p>
   <p>Running since ${startDate.toISOString()}</p>  
 </body>
 </html>`)
@@ -157,5 +158,9 @@ app.use('/', (req, res) => {
 
 //
 
-server.listen(CONFIG.port)
-console.info(`Running on port ${CONFIG.port}`)
+server.listen({
+  host: CONFIG.host,
+  port: CONFIG.port,
+}, info => {
+  console.info(`Running on`, server.address())
+})
