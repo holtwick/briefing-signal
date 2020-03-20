@@ -63,20 +63,18 @@ io.on('connection', function (socket) {
   const sid = socket.id
   let currentRoom
 
-  let peers = activeSockets(sid)
-  log('connection', sid, 'peers', peers)
+  // let peers = activeSockets(sid)
+  log('connection socket id:', sid)
 
   for (const msg of ['disconnect', 'disconnecting', 'error']) {
     socket.on(msg, data => {
-      // if (msg === 'error') {
       log(`* ${msg}:`, data)
-      // let inform = removeSocket(sid)
       brokenSocket(socket)
       removeSocketFromRoom(currentRoom, sid)
-      // broadcastWorkspacesByID(inform)
     })
   }
 
+  // The peer that joined is responsible for initiating WebRTC connections
   socket.on('join', ({ room }) => {
     let peers = allSocketsForRoom(room)
     const full = peers.length >= config.max
@@ -95,7 +93,6 @@ io.on('connection', function (socket) {
         peers,
       })
     }
-    // broadcastByID(peers)
   })
 
   // Ask for a connection to another socket via ID
