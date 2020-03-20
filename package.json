@@ -1,0 +1,20 @@
+{
+  "name": "peer2school-server",
+  "version": "0.1.0",
+  "description": "Signaling Server",
+  "private": true,
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/holtwick/peer2school-server.git"
+  },
+  "author": "Dirk Holtwick",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/holtwick/peer2school-server/issues"
+  },
+  "homepage": "https://github.com/holtwick/peer2school-server#readme"
+}
