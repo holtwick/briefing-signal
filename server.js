@@ -145,10 +145,10 @@ app.use('/', (req, res) => {
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="format-detection" content="telephone=no">
   <meta name="msapplication-tap-highlight" content="no">
-  <title>Peer.School Signal</title>
+  <title>Briefing Signal Server</title>
 </head>
 <body>
-  <p><b><a href="https://peer.school">Peer.School</a> Signal</b></p>
+  <p><b><a href="https://brie.fi/ng">Briefing</a> Signal Server</b></p>
   <p>Running since ${startDate.toISOString()}</p>  
 </body>
 </html>`)
